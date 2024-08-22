@@ -1,6 +1,3 @@
-Here's a sample `README.md` file for your project. This README provides instructions for setting up, installing dependencies, and deploying the contracts to the Arbitrum Sepolia testnet.
-
-```markdown
 # Capture the Flag Solidity Project
 
 This project implements a "Capture the Flag" game using Solidity smart contracts. The project includes the following contracts:
@@ -107,9 +104,3 @@ Contributions are welcome! Please fork the repository and submit a pull request.
 ## License
 
 This project is licensed under the MIT License.
-```
-
-### Notes
-
-- Replace `yourusername` in the clone URL with your actual GitHub username.
-- Make sure to customize the README with your project’s specific details, such as links to your repository, additional setup steps, and any other relevant information.
