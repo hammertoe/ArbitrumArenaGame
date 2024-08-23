@@ -9,6 +9,8 @@ contract CaptureTheFlag {
 
     PlayerFlagStructs.Player[] public players;
     PlayerFlagStructs.Flag[] public flags;
+    uint public gridSize;
+
 
     event MoveCalculated(address player, uint direction);
 
@@ -24,8 +26,41 @@ contract CaptureTheFlag {
         return (players, flags);
     }
 
+    function startGame(uint _gridSize) public {
+        distributePlayersRandomly(_gridSize);
+    }
+
+    function distributePlayersRandomly(uint256 Y) public {
+        uint256 X = players.length;
+
+        require(X <= Y * Y, "Not enough space on the board for all players");
+
+        // Create an array to track used positions
+        bool[][] memory usedPositions = new bool[][](Y);
+        for (uint i = 0; i < Y; i++) {
+            usedPositions[i] = new bool[](Y);
+        }
+
+        for (uint256 i = 0; i < X; i++) {
+            uint256 x;
+            uint256 y;
+
+            // Generate random positions until an unused one is found
+            do {
+                x = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i))) % Y;
+                y = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, x))) % Y;
+            } while (usedPositions[x][y]);
+
+            // Mark the position as used
+            usedPositions[x][y] = true;
+
+            // Assign the position to the player
+            players[i].x = x;
+            players[i].y = y;
+        }
+    }
+
     function iteratePlayers() public {
-        uint gridSize = 4;
         for (uint i = 0; i < players.length; i++) {
             PlayerFlagStructs.Player storage player = players[i];
             PlayerContract playerContract = PlayerContract(player.playerAddress);
@@ -53,36 +88,7 @@ contract CaptureTheFlag {
             } else if (direction == 8) { // North West
                 if (player.y > 0) player.y -= 1;
                 if (player.x > 0) player.x -= 1;
-            }       
-
-            // Check if player is at the location of a flag
-            for (uint j = 0; j < flags.length; j++) {
-                if (!flags[j].captured && player.x == flags[j].x && player.y == flags[j].y) {
-                    player.score += 1;
-                    flags[j].captured = true;
-                }
             }
-
-            // Check if player is at the same location as another player
-            for (uint k = 0; k < players.length; k++) {
-                if (i != k) {
-                    PlayerFlagStructs.Player storage otherPlayer = players[k];
-                    // We are no same square as another player
-                    if (player.x == otherPlayer.x && player.y == otherPlayer.y) {
-                        // This player is stronger than other player and hence beats it
-                        if (player.score > otherPlayer.score) {
-                            player.score += otherPlayer.score;
-                            otherPlayer.score = 0;
-                        }
-
-                        // Other player was stronger, we lose!
-                        if (player.score < otherPlayer.score) {
-                            otherPlayer.score += player.score;
-                            player.score = 0;
-                        }
-                    }
-                }
-            } 
         }
     }
 

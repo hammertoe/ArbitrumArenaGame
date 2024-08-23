@@ -1,6 +1,7 @@
 async function main() {
     // Constants
     const NUMBER_OF_PLAYERS = 5;  // Specify the number of player contracts to create
+    const UNIT_FACTOR = 10;       // Specify the unit factor for grid size calculation
 
     // Compile contracts
     await hre.run('compile');
@@ -37,6 +38,22 @@ async function main() {
 
     console.log("All player contracts deployed and registered:");
     console.log(playerContracts);
+
+    // Calculate the grid size
+    const totalSpace = NUMBER_OF_PLAYERS * UNIT_FACTOR;
+    const gridSize = Math.ceil(Math.sqrt(totalSpace));
+
+    // Start the game with the calculated grid size
+    const startGameTx = await captureTheFlag.startGame(UNIT_FACTOR);
+    await startGameTx.wait();  // Wait for the transaction to be mined
+
+    console.log(`Game started with grid size: ${gridSize}`);
+
+     // Print out the location of each player
+     for (let i = 0; i < NUMBER_OF_PLAYERS; i++) {
+        const player = await captureTheFlag.players(i);
+        console.log(`Player ${i + 1} location: x=${player.x}, y=${player.y}`);
+    }
 }
 
 main()
