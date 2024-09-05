@@ -34,8 +34,7 @@ async function main() {
     await tx.wait(); // Wait for the transaction to be mined
 
     console.log("All player contracts registered with CaptureTheFlag");
-    console.log(captureTheFlag.players.length);
-    console.log(tx);
+    console.log(await captureTheFlag.getNumPlayers());
 }
 
 main()

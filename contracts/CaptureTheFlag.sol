@@ -15,13 +15,26 @@ contract CaptureTheFlag {
     event MoveCalculated(address player, uint direction);
 
     function registerPlayer(address playerAddress) public {
-        players.push(PlayerFlagStructs.Player(playerAddress, 0, 0, 0));
+        // Check if the player is already registered
+        for (uint i = 0; i < players.length; i++) {
+            if (players[i].playerAddress == playerAddress) {
+                // Player is already registered, skip
+                return;
+            }
+        }
+    
+        // If not registered, add the player to the array
+        players.push(PlayerFlagStructs.Player(playerAddress, 0, 0, 0));    
     }
 
     function registerMultiplePlayers(address[] memory playerAddresses) public {
         for (uint i = 0; i < playerAddresses.length; i++) {
             registerPlayer(playerAddresses[i]);
         }
+    }
+
+    function getNumPlayers() public view returns (uint256) {
+        return players.length;
     }
 
     function addFlag(uint x, uint y) public {
@@ -53,8 +66,8 @@ contract CaptureTheFlag {
 
             // Generate random positions until an unused one is found
             do {
-                x = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i))) % Y;
-                y = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, x))) % Y;
+                x = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % Y;
+                y = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i, x))) % Y;
             } while (usedPositions[x][y]);
 
             // Mark the position as used
