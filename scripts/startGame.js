@@ -14,9 +14,10 @@ async function main() {
     // Attach to the CaptureTheFlag contract
     const CaptureTheFlag = await hre.ethers.getContractFactory("CaptureTheFlag");
     const captureTheFlag = await CaptureTheFlag.attach(captureTheFlagAddress);
+    const numPlayers = Number(await captureTheFlag.getNumPlayers());
 
     // Calculate the grid size
-    const totalSpace = captureTheFlag.players.length * UNIT_FACTOR;
+    const totalSpace = numPlayers * UNIT_FACTOR;
     const gridSize = Math.ceil(Math.sqrt(totalSpace));
 
     // Start the game with the calculated grid size
@@ -26,7 +27,7 @@ async function main() {
     console.log(`Game started with grid size: ${gridSize}`);
 
      // Print out the location of each player
-     for (let i = 0; i < captureTheFlag.players.length; i++) {
+     for (let i = 0; i < numPlayers; i++) {
         const player = await captureTheFlag.players(i);
         console.log(`Player ${i + 1} location: x=${player.x}, y=${player.y}`);
     }
