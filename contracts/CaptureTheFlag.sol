@@ -18,6 +18,12 @@ contract CaptureTheFlag {
         players.push(PlayerFlagStructs.Player(playerAddress, 0, 0, 0));
     }
 
+    function registerMultiplePlayers(address[] memory playerAddresses) public {
+        for (uint i = 0; i < playerAddresses.length; i++) {
+            registerPlayer(playerAddresses[i]);
+        }
+    }
+
     function addFlag(uint x, uint y) public {
         flags.push(PlayerFlagStructs.Flag(x, y, false));
     }
