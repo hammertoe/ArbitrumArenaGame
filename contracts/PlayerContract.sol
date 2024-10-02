@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.0;
 
-import "./PlayerFlagStructs.sol";
-import "./CaptureTheFlag.sol";
+import "./IPlayer.sol";
+import "./GameTypes.sol";
 
-contract MyPlayerContract is PlayerContract {
-    using PlayerFlagStructs for PlayerFlagStructs.Player;
-    using PlayerFlagStructs for PlayerFlagStructs.Flag;
+contract RunAwayPlayer is IPlayer {
+
+    function reset() external override {
+        // Reset any internal state variables
+        // For example:
+        // someStateVariable = 0;
+    }
 
     function getRandomNumber() public view returns (uint) {
         uint randomHash = uint(keccak256(abi.encodePacked(
@@ -18,9 +22,12 @@ contract MyPlayerContract is PlayerContract {
         return randomHash % 9; // Returns a number between 0 and 8 inclusive
     }
 
-    function calcMove(PlayerFlagStructs.Player memory player, PlayerFlagStructs.Player[] memory players, PlayerFlagStructs.Flag[] memory flags) public override returns (uint) {
-        // Implement your move calculation logic here
-        // Return a uint value representing the direction to move (0 = N, 1 = NE, 2 = E, etc.)
-        return getRandomNumber();
+    function getAction(GameState calldata state) external override returns (Action memory) {
+        Action memory action;
+        
+        // Move away from the enemy if possible
+        action.actionType = ActionType.Move;
+        action.direction = Direction(getRandomNumber());
+        action.targetPlayer = address(0);
     }
 }

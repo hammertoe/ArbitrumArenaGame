@@ -2,9 +2,9 @@ const hre = require("hardhat");
 require('dotenv').config();
 
 async function main() {
-    // Get the CaptureTheFlag contract address from the environment variable
-    const captureTheFlagAddress = process.env.CAPTURE_THE_FLAG_CONTRACT_ADDRESS;
-    if (!captureTheFlagAddress || !hre.ethers.isAddress(captureTheFlagAddress)) {
+    // Get the Arena contract address from the environment variable
+    const arenaAddress = process.env.CAPTURE_THE_FLAG_CONTRACT_ADDRESS;
+    if (!arenaAddress || !hre.ethers.isAddress(arenaAddress)) {
         console.error("Invalid or missing CAPTURE_THE_FLAG_CONTRACT_ADDRESS environment variable.");
         process.exit(1);
     }
@@ -25,16 +25,16 @@ async function main() {
         process.exit(1);
     }
 
-    // Attach to the CaptureTheFlag contract
-    const CaptureTheFlag = await hre.ethers.getContractFactory("CaptureTheFlag");
-    const captureTheFlag = await CaptureTheFlag.attach(captureTheFlagAddress);
+    // Attach to the Arena contract
+    const Arena = await hre.ethers.getContractFactory("Arena");
+    const arena = await Arena.attach(arenaAddress);
 
     // Register the provided player contract addresses
-    const tx = await captureTheFlag.registerMultiplePlayers(playerAddresses);
+    const tx = await arena.registerMultiplePlayers(playerAddresses);
     await tx.wait(); // Wait for the transaction to be mined
 
-    console.log("All player contracts registered with CaptureTheFlag");
-    console.log(await captureTheFlag.getNumPlayers());
+    console.log("All player contracts registered with Arena");
+    console.log(await arena.getNumPlayers());
 }
 
 main()

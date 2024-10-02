@@ -2,12 +2,12 @@ async function main() {
     // Compile contracts
     await hre.run('compile');
     
-    // Deploy the CaptureTheFlag contract
-    const CaptureTheFlag = await hre.ethers.getContractFactory("CaptureTheFlag");
-    const captureTheFlag = await CaptureTheFlag.deploy();
-    await captureTheFlag.waitForDeployment();
+    // Deploy the Arena contract
+    const Arena = await hre.ethers.getContractFactory("Arena");
+    const arena = await Arena.deploy();
+    await arena.waitForDeployment();
     
-    console.log("CaptureTheFlag deployed to:", await captureTheFlag.getAddress());
+    console.log("Arena deployed to:", await arena.getAddress());
 
     // Deploy MyPlayerContract (which implements PlayerContract)
     const MyPlayerContract = await hre.ethers.getContractFactory("MyPlayerContract");
