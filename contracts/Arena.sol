@@ -14,21 +14,32 @@ contract Arena {
     mapping(address => PlayerInfo) public players;
     address[] public playerAddresses;
 
+    // Mapping to track occupied locations
+    mapping(uint256 => bool) private occupiedPositions;
+
     // Internal PlayerInfo struct (used for internal logic)
     struct PlayerInfo {
         address playerAddress;
         uint256 x;
         uint256 y;
         uint256 health;
-        bool isAlive;
         uint256 defenseBuff;
+        string name;
     }
 
     // Events
-    event PlayerRegistered(address playerAddress);
+    event PlayerRegistered(address playerAddress, string name);
     event GameStarted();
-    event TurnPlayed(uint256 turnNumber);
+    event TurnPlayed(
+            uint256 turnNumber, 
+            address[] playerAddrs,
+            uint256[] xs,
+            uint256[] ys,
+            uint256[] healths);
     event GameEnded(address winner);
+    event ActionFailed(address playerAddress);
+    event ActionSuccess(address playerAddress);
+
 
     // Modifiers
     modifier onlyBeforeGameStart() {
@@ -46,21 +57,23 @@ contract Arena {
         require(playerContract != address(0), "Invalid player contract address");
         require(players[playerContract].playerAddress == address(0), "Player already registered");
 
+        // Fetch the player's name
+        string memory playerName = IPlayer(playerContract).name();
+
         // Initialize the player at a random position
-        uint256 index = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, playerContract))) % (gridSize * gridSize);
         PlayerInfo memory newPlayer = PlayerInfo({
             playerAddress: playerContract,
-            x: index % gridSize,
-            y: index / gridSize,
+            x: 0,
+            y: 0,
             health: 100,
-            isAlive: true,
-            defenseBuff: 0
+            defenseBuff: 0,
+            name: playerName
         });
 
         players[playerContract] = newPlayer;
         playerAddresses.push(playerContract);
 
-        emit PlayerRegistered(playerContract);
+        emit PlayerRegistered(playerContract, playerName);
     }
 
     function registerMultiplePlayers(address[] memory playerContracts) public {
@@ -75,17 +88,76 @@ contract Arena {
 
     // Start the game
     function startGame() public {
+
+        require(playerAddresses.length >= 2, "At least two players are required to start the game");
+
         // Reset the game state
         resetGame();
 
-        require(playerAddresses.length >= 2, "At least two players are required to start the game");
         gameStarted = true;
-
         emit GameStarted();
+        (
+            address[] memory playerAddrs,
+            uint256[] memory xs,
+            uint256[] memory ys,
+            uint256[] memory healths
+        ) = getGameState();
+        emit TurnPlayed(totalTurns, playerAddrs, xs, ys, healths);    
     }
 
     // Reset the game state without clearing registered players
     function resetGame() internal {
+        // Reset game state variables
+        gameStarted = false;
+        totalTurns = 0;
+
+
+         // Clear the occupied positions mapping
+        for (uint256 i = 0; i < gridSize * gridSize; i++) {
+            occupiedPositions[i] = false;
+        }
+
+        // Reset each player's state and call reset on player contracts
+        for (uint256 i = 0; i < playerAddresses.length; i++) {
+            address playerAddr = playerAddresses[i];
+            PlayerInfo storage player = players[playerAddr];
+
+            // Variable to help with reseeding randomness during retries
+            uint256 attempt = 0;
+            uint256 index;
+
+            // Find a random unoccupied position for the player
+            do {
+                index = uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            block.timestamp,
+                            block.prevrandao,
+                            playerAddr,
+                            totalTurns,
+                            attempt // Incremented on each retry to change randomness
+                        )
+                    )
+                ) % (gridSize * gridSize);
+                attempt++;
+            } while (occupiedPositions[index]);
+
+            // Mark the position as occupied
+            occupiedPositions[index] = true;
+
+            // Calculate x and y from the index
+            player.x = index % gridSize;
+            player.y = index / gridSize;
+            player.health = 100;
+            player.defenseBuff = 0;
+
+            // Call reset on the player contract
+            IPlayer(playerAddr).reset();
+        }
+    }
+
+    // Reset the game state without clearing registered players
+    function XresetGame() internal {
         // Reset game state variables
         gameStarted = false;
         totalTurns = 0;
@@ -100,7 +172,6 @@ contract Arena {
             player.x = index % gridSize;
             player.y = index / gridSize;
             player.health = 100;
-            player.isAlive = true;
             player.defenseBuff = 0;
 
             // Call reset on the player contract
@@ -118,18 +189,32 @@ contract Arena {
         bool[] memory playerMoved = new bool[](playerAddresses.length);
         bool[] memory playerAttacked = new bool[](playerAddresses.length);
 
-        // Collect actions from each player
-        for (uint256 i = 0; i < playerAddresses.length; i++) {
-            address playerAddr = playerAddresses[i];
-            PlayerInfo storage player = players[playerAddr];
+        // Prepare game state data to pass to players
+        (
+            address[] memory playerAddrs,
+            uint256[] memory xs,
+            uint256[] memory ys,
+            uint256[] memory healths
+        ) = getGameState();
 
-            if (player.isAlive) {
-                try IPlayer(playerAddr).getAction{gas: gasLimitPerPlayer}(getGameState()) returns (Action memory action) {
+        // Collect actions from each player
+        for (uint256 i = 0; i < playerAddrs.length; i++) {
+            address playerAddr = playerAddrs[i];
+
+            if (healths[i] > 0) {
+                try IPlayer(playerAddr).getAction{gas: gasLimitPerPlayer}(
+                    playerAddrs,
+                    xs,
+                    ys,
+                    healths
+                ) returns (Action memory action) {
+                    emit ActionSuccess(playerAddr);
                     // Validate the action
                     actions[i] = validateAction(action);
                 } catch {
                     // Assign default action if getAction fails
                     actions[i] = defaultAction();
+                    emit ActionFailed(playerAddr);
                 }
             } else {
                 // Dead players do nothing
@@ -143,7 +228,13 @@ contract Arena {
         // Process health regeneration
         processHealthRegeneration(playerMoved, playerAttacked);
 
-        emit TurnPlayed(totalTurns);
+        (
+            playerAddrs,
+            xs,
+            ys,
+            healths
+        ) = getGameState();
+        emit TurnPlayed(totalTurns, playerAddrs, xs, ys, healths);
 
         // Check for end game conditions
         if (checkGameOver()) {
@@ -194,7 +285,7 @@ contract Arena {
             PlayerInfo storage player = players[playerAddr];
             Action memory action = actions[i];
 
-            if (!player.isAlive) continue;
+            if (!(player.health > 0)) continue;
 
             if (action.actionType == ActionType.Move) {
                 // Calculate new position based on direction
@@ -219,7 +310,7 @@ contract Arena {
             PlayerInfo storage attacker = players[attackerAddr];
             Action memory action = actions[i];
 
-            if (!attacker.isAlive) continue;
+            if (!(attacker.health > 0)) continue;
 
             if (action.actionType == ActionType.Attack) {
                 // Calculate attack position based on direction
@@ -245,7 +336,6 @@ contract Arena {
                         // Apply damage
                         if (targetPlayer.health <= damage) {
                             targetPlayer.health = 0;
-                            targetPlayer.isAlive = false;
                         } else {
                             targetPlayer.health -= damage;
                         }
@@ -266,7 +356,7 @@ contract Arena {
             address playerAddr = playerAddresses[i];
             PlayerInfo storage player = players[playerAddr];
 
-            if (!player.isAlive) continue;
+            if (!(player.health > 0)) continue;
 
             // If the player did not move and was not attacked
             if (!playerMoved[i] && !playerAttacked[i]) {
@@ -328,7 +418,7 @@ contract Arena {
             address playerAddr = playerAddresses[i];
             if (playerAddr == excludePlayer) continue;
             PlayerInfo storage player = players[playerAddr];
-            if (player.isAlive && player.x == x && player.y == y) {
+            if (player.health > 0 && player.x == x && player.y == y) {
                 return true;
             }
         }
@@ -339,7 +429,7 @@ contract Arena {
     function getPlayerAtPosition(uint256 x, uint256 y) internal view returns (address, uint256) {
         for (uint256 i = 0; i < playerAddresses.length; i++) {
             PlayerInfo storage player = players[playerAddresses[i]];
-            if (player.isAlive && player.x == x && player.y == y) {
+            if (player.health > 0 && player.x == x && player.y == y) {
                 return (player.playerAddress, i);
             }
         }
@@ -351,7 +441,7 @@ contract Arena {
         uint256 aliveCount = 0;
 
         for (uint256 i = 0; i < playerAddresses.length; i++) {
-            if (players[playerAddresses[i]].isAlive) {
+            if (players[playerAddresses[i]].health > 0) {
                 aliveCount++;
                 if (aliveCount > 1) {
                     return false;
@@ -365,7 +455,7 @@ contract Arena {
     function getWinner() internal view returns (address) {
         for (uint256 i = 0; i < playerAddresses.length; i++) {
             address playerAddr = playerAddresses[i];
-            if (players[playerAddr].isAlive) {
+            if (players[playerAddr].health > 0) {
                 return playerAddr;
             }
         }
@@ -379,7 +469,7 @@ contract Arena {
 
         for (uint256 i = 0; i < playerAddresses.length; i++) {
             PlayerInfo storage player = players[playerAddresses[i]];
-            if (player.isAlive && player.health > highestHealth) {
+            if (player.health > 0 && player.health > highestHealth) {
                 highestHealth = player.health;
                 winner = player.playerAddress;
             }
@@ -387,28 +477,34 @@ contract Arena {
         return winner;
     }
 
-    // Get the current game state to pass to players
-    function getGameState() internal view returns (GameState memory) {
-        PlayerState[] memory statePlayers = new PlayerState[](playerAddresses.length);
+    function getGameState()
+        public
+        view
+        returns (
+            address[] memory playerAddrs,
+            uint256[] memory xs,
+            uint256[] memory ys,
+            uint256[] memory healths
+        )
+    {
+        uint256 numPlayers = playerAddresses.length;
 
-        for (uint256 i = 0; i < playerAddresses.length; i++) {
-            PlayerInfo storage player = players[playerAddresses[i]];
-            statePlayers[i] = PlayerState({
-                playerAddress: player.playerAddress,
-                x: player.x,
-                y: player.y,
-                health: player.health,
-                isAlive: player.isAlive,
-                defenseBuff: player.defenseBuff
-            });
+        // Initialize return variables
+        playerAddrs = new address[](numPlayers);
+        xs = new uint256[](numPlayers);
+        ys = new uint256[](numPlayers);
+        healths = new uint256[](numPlayers);
+
+        for (uint256 i = 0; i < numPlayers; i++) {
+            address playerAddr = playerAddresses[i];
+            PlayerInfo storage player = players[playerAddr];
+            playerAddrs[i] = playerAddr;
+            xs[i] = player.x;
+            ys[i] = player.y;
+            healths[i] = player.health;
         }
 
-        GameState memory state = GameState({
-            gridSize: gridSize,
-            players: statePlayers
-        });
-
-        return state;
+        return (playerAddrs, xs, ys, healths);
     }
 
     // Generate a pseudo-random number

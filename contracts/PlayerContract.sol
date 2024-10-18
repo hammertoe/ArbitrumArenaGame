@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 import "./IPlayer.sol";
 import "./GameTypes.sol";
 
-contract RunAwayPlayer is IPlayer {
+contract ExamplePlayer is IPlayer {
+
+    // Add a public variable or function to return the player's name
+    string public override name = "ExamplePlayer";
 
     function reset() external override {
         // Reset any internal state variables
@@ -22,8 +25,13 @@ contract RunAwayPlayer is IPlayer {
         return randomHash % 9; // Returns a number between 0 and 8 inclusive
     }
 
-    function getAction(GameState calldata state) external override returns (Action memory) {
-        Action memory action;
+    function getAction(
+        address[] calldata playerAddrs,
+        uint256[] calldata xs,
+        uint256[] calldata ys,
+        uint256[] calldata healths
+    ) external view override returns (Action memory) {
+         Action memory action;
         
         // Move away from the enemy if possible
         action.actionType = ActionType.Move;

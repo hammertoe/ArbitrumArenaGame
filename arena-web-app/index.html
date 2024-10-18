@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arena Game</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Include ethers.js library -->
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
+</head>
+<body>
+    <h1>Arena Game on Arbitrum Sepolia</h1>
+
+    <div id="wallet-connection">
+        <button id="connect-wallet">Connect Wallet</button>
+        <span id="wallet-address"></span>
+    </div>
+
+    <div id="registration">
+        <h2>Register Your Player Contract</h2>
+        <input type="text" id="player-address" placeholder="Enter your Player contract address">
+        <button id="register-player">Register Player</button>
+    </div>
+
+    <div id="registered-players-container">
+        <h2>Registered Players</h2>
+        <ul id="registered-players-list"></ul>
+    </div>
+
+    <div id="game-controls">
+        <button id="start-game">Start Game</button>
+    </div>
+
+    <div id="arena-container">
+        <h2>Arena</h2>
+        <div id="arena-grid"></div>
+    </div>
+
+    <!-- Include your script.js file after ethers.js -->
+    <script src="script.js"></script>
+</body>
+</html>

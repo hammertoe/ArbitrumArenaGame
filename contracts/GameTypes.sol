@@ -28,6 +28,7 @@ struct PlayerState {
     uint256 health;
     bool isAlive;
     uint256 defenseBuff;
+    string name;
 }
 
 struct GameState {

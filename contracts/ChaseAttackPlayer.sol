@@ -5,170 +5,107 @@ import "./IPlayer.sol";
 import "./GameTypes.sol";
 
 contract ChaseAttackPlayer is IPlayer {
-    // Optional: You can store state variables if needed
-    // uint256 public lastTargetIndex;
+    string public override name = "ChaseAttackPlayer2";
 
-    function reset() external override {
-        // Reset any internal state variables
-        // For example:
-        // someStateVariable = 0;
+    struct Player {
+        address addr;
+        uint256 x;
+        uint256 y;
+        uint256 health;
     }
 
-    function getAction(GameState calldata state) view external override returns (Action memory) {
-        Action memory action;
+    function reset() external override {}
 
-        // Find my player state
-        PlayerState memory me;
-        bool foundMe = false;
-        for (uint256 i = 0; i < state.players.length; i++) {
-            if (state.players[i].playerAddress == address(this)) {
-                me = state.players[i];
-                foundMe = true;
-                break;
-            }
+    function getAction(
+        address[] calldata playerAddrs,
+        uint256[] calldata xs,
+        uint256[] calldata ys,
+        uint256[] calldata healths
+    ) external view override returns (Action memory) {
+        Player[] memory players = createPlayerArray(playerAddrs, xs, ys, healths);
+        uint256 meIndex = findMyIndex(players);
+        return findAndActOnClosestEnemy(players, meIndex);
+    }
+
+    function createPlayerArray(
+        address[] calldata playerAddrs,
+        uint256[] calldata xs,
+        uint256[] calldata ys,
+        uint256[] calldata healths
+    ) internal pure returns (Player[] memory) {
+        Player[] memory players = new Player[](playerAddrs.length);
+        for (uint256 i = 0; i < playerAddrs.length; i++) {
+            players[i] = Player(playerAddrs[i], xs[i], ys[i], healths[i]);
         }
+        return players;
+    }
 
-        require(foundMe, "Player not found in game state");
+    function findMyIndex(Player[] memory players) internal view returns (uint256) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].addr == address(this)) return i;
+        }
+        revert("Player not found in game state");
+    }
 
-        // Find the closest alive player
-        PlayerState memory closestEnemy;
+    function findAndActOnClosestEnemy(Player[] memory players, uint256 meIndex) internal pure returns (Action memory) {
         uint256 minDistance = type(uint256).max;
+        uint256 enemyIndex = 0;
         bool enemyFound = false;
 
-        for (uint256 i = 0; i < state.players.length; i++) {
-            PlayerState memory other = state.players[i];
-
-            // Skip if it's me or if the other player is dead
-            if (other.playerAddress == address(this) || !other.isAlive) {
-                continue;
-            }
-
-            uint256 distance = manhattanDistance(me.x, me.y, other.x, other.y);
-
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestEnemy = other;
-                enemyFound = true;
+        for (uint256 i = 0; i < players.length; i++) {
+            if (i != meIndex && (players[i].health > 0)) {
+                uint256 distance = chebyshevDistance(players[meIndex], players[i]);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    enemyIndex = i;
+                    enemyFound = true;
+                }
             }
         }
 
         if (enemyFound) {
-            // Check if adjacent
-            if (minDistance == 1) {
-                // Attack the enemy
-                action.actionType = ActionType.Attack;
-                action.direction = Direction(getDirectionTo(me.x, me.y, closestEnemy.x, closestEnemy.y));
-                action.targetPlayer = closestEnemy.playerAddress;
-            } else {
-                // Move towards the enemy
-                action.actionType = ActionType.Move;
-                action.direction = Direction(getDirectionTowards(me.x, me.y, closestEnemy.x, closestEnemy.y));
-                action.targetPlayer = address(0);
-            }
+            return createAction(
+                minDistance == 1 ? ActionType.Attack : ActionType.Move,
+                players[meIndex],
+                players[enemyIndex],
+                minDistance == 1 ? players[enemyIndex].addr : address(0)
+            );
         } else {
-            // No enemies found, stay in place and defend
-            action = defaultAction();
-        }
-
-        return action;
-    }
-
-    // Helper function to calculate Manhattan distance
-    function manhattanDistance(uint256 x1, uint256 y1, uint256 x2, uint256 y2) internal pure returns (uint256) {
-        uint256 dx = x1 > x2 ? x1 - x2 : x2 - x1;
-        uint256 dy = y1 > y2 ? y1 - y2 : y2 - y1;
-        return dx + dy;
-    }
-
-    // Helper function to determine the direction towards the target
-    function getDirectionTowards(
-        uint256 fromX,
-        uint256 fromY,
-        uint256 toX,
-        uint256 toY
-    ) internal pure returns (Direction) {
-        int256 dx = int256(toX) - int256(fromX);
-        int256 dy = int256(toY) - int256(fromY);
-
-        // Normalize dx and dy to -1, 0, or 1
-        if (dx != 0) {
-            dx = dx / abs(dx);
-        }
-        if (dy != 0) {
-            dy = dy / abs(dy);
-        }
-
-        // Map (dx, dy) to a direction
-        if (dx == 0 && dy == 1) {
-            return Direction.North;
-        } else if (dx == 1 && dy == 1) {
-            return Direction.Northeast;
-        } else if (dx == 1 && dy == 0) {
-            return Direction.East;
-        } else if (dx == 1 && dy == -1) {
-            return Direction.Southeast;
-        } else if (dx == 0 && dy == -1) {
-            return Direction.South;
-        } else if (dx == -1 && dy == -1) {
-            return Direction.Southwest;
-        } else if (dx == -1 && dy == 0) {
-            return Direction.West;
-        } else if (dx == -1 && dy == 1) {
-            return Direction.Northwest;
-        } else {
-            return Direction.Stay;
+            return createAction(ActionType.Defend, players[meIndex], players[meIndex], address(0));
         }
     }
 
-    // Helper function to get the direction to an adjacent enemy for attacking
-    function getDirectionTo(
-        uint256 fromX,
-        uint256 fromY,
-        uint256 toX,
-        uint256 toY
-    ) internal pure returns (Direction) {
-        int256 dx = int256(toX) - int256(fromX);
-        int256 dy = int256(toY) - int256(fromY);
-
-        // Ensure the target is adjacent
-        require(
-            (dx >= -1 && dx <= 1) && (dy >= -1 && dy <= 1) && !(dx == 0 && dy == 0),
-            "Target not adjacent"
-        );
-
-        // Map (dx, dy) to a direction
-        if (dx == 0 && dy == 1) {
-            return Direction.North;
-        } else if (dx == 1 && dy == 1) {
-            return Direction.Northeast;
-        } else if (dx == 1 && dy == 0) {
-            return Direction.East;
-        } else if (dx == 1 && dy == -1) {
-            return Direction.Southeast;
-        } else if (dx == 0 && dy == -1) {
-            return Direction.South;
-        } else if (dx == -1 && dy == -1) {
-            return Direction.Southwest;
-        } else if (dx == -1 && dy == 0) {
-            return Direction.West;
-        } else if (dx == -1 && dy == 1) {
-            return Direction.Northwest;
-        } else {
-            revert("Invalid direction");
-        }
+    function chebyshevDistance(Player memory p1, Player memory p2) internal pure returns (uint256) {
+        uint256 dx = p1.x > p2.x ? p1.x - p2.x : p2.x - p1.x;
+        uint256 dy = p1.y > p2.y ? p1.y - p2.y : p2.y - p1.y;
+        return dx > dy ? dx : dy;
     }
 
-    // Helper function to get absolute value
-    function abs(int256 x) internal pure returns (int256) {
-        return x >= 0 ? x : -x;
-    }
-
-    // Default action (Defend and Stay)
-    function defaultAction() internal pure returns (Action memory) {
+    function createAction(
+        ActionType actionType,
+        Player memory from,
+        Player memory to,
+        address targetPlayer
+    ) internal pure returns (Action memory) {
         return Action({
-            actionType: ActionType.Defend,
-            direction: Direction(Direction.Stay),
-            targetPlayer: address(0)
+            actionType: actionType,
+            direction: actionType == ActionType.Defend ? Direction.Stay : getDirection(from, to),
+            targetPlayer: targetPlayer
         });
+    }
+
+    function getDirection(Player memory from, Player memory to) internal pure returns (Direction) {
+        int256 dx = int256(to.x) - int256(from.x);
+        int256 dy = int256(to.y) - int256(from.y);
+
+        if (dx == 0 && dy > 0) return Direction.North;
+        if (dx > 0 && dy > 0) return Direction.Northeast;
+        if (dx > 0 && dy == 0) return Direction.East;
+        if (dx > 0 && dy < 0) return Direction.Southeast;
+        if (dx == 0 && dy < 0) return Direction.South;
+        if (dx < 0 && dy < 0) return Direction.Southwest;
+        if (dx < 0 && dy == 0) return Direction.West;
+        if (dx < 0 && dy > 0) return Direction.Northwest;
+        return Direction.Stay;
     }
 }
