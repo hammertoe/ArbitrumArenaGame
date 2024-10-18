@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arena Game</title>
     <link rel="stylesheet" href="style.css">
     <!-- Include ethers.js library -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
 </head>
 <body>
+    <div id="banner">
+        <img src="arbitrum-arena-banner.jpg" alt="Arbitrum Arena Banner">
+    </div>
+
     <h1>Arena Game on Arbitrum Sepolia</h1>
 
     <div id="wallet-connection">
@@ -23,14 +28,22 @@
 
     <div id="registered-players-container">
         <h2>Registered Players</h2>
-        <ul id="registered-players-list"></ul>
+        <table>
+            <thead>
+                <tr>
+                    <th>Color</th>
+                    <th>Health</th>
+                    <th>Address</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="registered-players-list">
+                <!-- Player rows will be dynamically added here -->
+            </tbody>
+        </table>
     </div>
 
-    <div id="game-controls">
-        <button id="start-game">Start Game</button>
-    </div>
-
-    <div id="arena-container">
+     <div id="arena-container">
         <h2>Arena</h2>
         <div id="arena-grid"></div>
     </div>

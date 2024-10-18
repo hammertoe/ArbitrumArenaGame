@@ -3,6 +3,22 @@ body {
     text-align: center;
 }
 
+h1 {
+    display: none;
+}
+
+#banner {
+    width: 100%;
+    margin: 0 0 20px 0;
+    overflow: hidden;
+}
+
+#banner img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
 #arena-grid {
     display: inline-block;
     margin-top: 20px;
@@ -45,4 +61,9 @@ body {
 
 #arena-container {
     margin-top: 40px;
+}
+
+td {
+    text-align: left;
+    padding-right: 20px;
 }

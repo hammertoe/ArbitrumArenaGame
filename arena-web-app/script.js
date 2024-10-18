@@ -19,7 +19,16 @@ const playerColors = [
 // Map to store player colors
 const playerColorMap = new Map();
 
-// Function to get a distributed set of colors for players
+// Load the ABI for the Arena contract
+fetch('arenaAbi.json')
+    .then(response => response.json())
+    .then(data => {
+        arenaAbi = data;
+    })
+    .catch(error => {
+        console.error('Error loading ABI:', error);
+    });
+
 function getDistributedColors(numPlayers) {
     if (numPlayers <= 0) return [];
     if (numPlayers >= playerColors.length) return playerColors;
@@ -35,7 +44,6 @@ function getDistributedColors(numPlayers) {
     return distributedColors;
 }
 
-// Function to update the colors for each player
 function updatePlayerColors(players) {
     playerColorMap.clear();
     const activeColors = getDistributedColors(players.length);
@@ -44,66 +52,42 @@ function updatePlayerColors(players) {
     });
 }
 
-// Function to get a player's color based on their address
 function getPlayerColor(playerAddress) {
     return playerColorMap.get(playerAddress) || '#CCCCCC';
 }
 
-// Load the ABI for the Arena contract
-fetch('arenaAbi.json')
-    .then(response => response.json())
-    .then(data => {
-        arenaAbi = data;
-    })
-    .catch(error => {
-        console.error('Error loading ABI:', error);
-    });
-
 document.getElementById('connect-wallet').addEventListener('click', async () => {
     if (typeof window.ethereum !== 'undefined') {
-        // Connect to MetaMask using Web3Provider
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = web3Provider.getSigner();
-
-        // Get the wallet address to display
         const walletAddress = await signer.getAddress();
         document.getElementById('wallet-address').innerText = `Connected: ${walletAddress}`;
 
-        // Create a WebSocketProvider for listening to contract events
-        const wsUrl = "wss://arbitrum-sepolia.infura.io/ws/v3/1c463129882e43dd9c641c38fb25f332"; // Replace with your network's WebSocket URL
+        const wsUrl = "wss://arbitrum-sepolia.infura.io/ws/v3/1c463129882e43dd9c641c38fb25f332";
         wsProvider = new ethers.providers.WebSocketProvider(wsUrl);
 
-        // Use the signer (from Web3Provider) with the WebSocketProvider to create the contract instance
         arenaContract = new ethers.Contract(arenaAddress, arenaAbi.abi, signer);
-        
-        // Set up event listeners using the WebSocketProvider
         setupEventListeners();
 
+        await getPlayerInfo();
         console.log('Connected to contract at:', arenaAddress);
     } else {
         alert('Please install MetaMask or another Ethereum wallet.');
     }
 });
 
-document.getElementById('start-game').addEventListener('click', async () => {
-    try {
-        const tx = await arenaContract.startGame();
-        const receipt = await tx.wait();
-        //console.log(receipt);
-        //const event = receipt.events.find(event => event.event === 'TurnPlayed');
-        //const [turn, playerAddrs, xs, ys, healths] = event.args;
-        //await updateArena(playerAddrs, xs, ys, healths);
-        alert('Game started!');
-    } catch (error) {
-        console.error('Error starting game:', error);
-        alert('Error starting game. See console for details.');
-    }
-});
+async function getPlayerInfo() {
+    let numPlayers = Number(await arenaContract.getNumPlayers());
+    const { playerAddrs, xs, ys, healths } = await arenaContract.getGameState();
+    for (let i = 0; i < numPlayers; i++) {
+        let playerInfo = await arenaContract.players(playerAddrs[i]);
+        registeredPlayers.set(playerAddrs[i], playerInfo);
+    } 
+    await updateArena(playerAddrs, xs, ys, healths);
+}
 
-// Listen for the 'TurnPlayed' event and update the arena
 async function setupEventListeners() {
-    // Create a contract instance using the WebSocket provider just for listening to events
     const arenaContractWs = new ethers.Contract(arenaAddress, arenaAbi.abi, wsProvider);
 
     arenaContractWs.on('TurnPlayed', async (turnNumber, playerAddrs, xs, ys, healths, event) => {
@@ -116,16 +100,12 @@ async function setupEventListeners() {
         alert(`Game ended! Winner is ${winner}`);
     });
 
-    console.log("set up event listeners");
-
+    console.log("Set up event listeners");
     console.log(wsProvider._events);
-
-    }
+}
 
 async function updateArena(playerAddrs, xs, ys, healths) {
-
     const arenaDiv = document.getElementById('arena-grid');
-
     gridSize = Number(await arenaContract.gridSize());
 
     const players = [];
@@ -144,6 +124,7 @@ async function updateArena(playerAddrs, xs, ys, healths) {
     }
 
     updatePlayerColors(players);
+    updatePlayerTable(players);
 
     const grid = [];
     for (let y = 0; y < gridSize; y++) {
@@ -184,4 +165,43 @@ async function updateArena(playerAddrs, xs, ys, healths) {
         }
         arenaDiv.appendChild(rowDiv);
     }
+}
+
+function updatePlayerTable(players) {
+    const playerTableBody = document.getElementById('registered-players-list');
+    playerTableBody.innerHTML = '';
+
+    // Sort players by health in descending order
+    players.sort((a, b) => b.health - a.health);
+
+    players.forEach(player => {
+        const row = document.createElement('tr');
+
+        // Player color cell
+        const colorCell = document.createElement('td');
+        const colorBox = document.createElement('div');
+        colorBox.style.backgroundColor = getPlayerColor(player.playerAddress);
+        colorBox.style.width = '20px';
+        colorBox.style.height = '20px';
+        colorBox.style.display = 'inline-block';
+        colorCell.appendChild(colorBox);
+        row.appendChild(colorCell);
+
+        // Player health cell
+        const healthCell = document.createElement('td');
+        healthCell.textContent = player.health;
+        row.appendChild(healthCell);
+
+        // Player abbreviated address cell
+        const addressCell = document.createElement('td');
+        addressCell.textContent = `${player.playerAddress.slice(0, 6)}...${player.playerAddress.slice(-4)}`;
+        row.appendChild(addressCell);
+
+        // Player name cell
+        const nameCell = document.createElement('td');
+        nameCell.textContent = player.name;
+        row.appendChild(nameCell)
+
+        playerTableBody.appendChild(row);
+    });
 }
