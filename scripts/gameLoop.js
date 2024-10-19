@@ -1,7 +1,13 @@
 const { ethers } = require("hardhat");
+require('dotenv').config();
 
 async function main() {
-    const arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
+    const arenaAddress = process.env.ARENA_CONTRACT_ADDRESS;
+
+    if (!arenaAddress || !hre.ethers.isAddress(arenaAddress)) {
+        console.error("Invalid or missing ARENA_CONTRACT_ADDRESS environment variable.");
+        process.exit(1);
+    }
 
     const provider = ethers.provider;
     const [signer] = await ethers.getSigners();
@@ -12,21 +18,31 @@ async function main() {
 
     // Start the game and enter the game loop
     try {
-        //const tx = await arenaContract.startGame();
-        //await tx.wait();
-        //console.log('Game started!');
-        await gameLoop(arenaContract);
+        // run gameloop in a loop indefinitely
+        while (true) {
+            await gameLoop(arenaContract);
+        }
     } catch (error) {
-        console.error('Error starting game:', error);
+        console.error('Error running game loop', error);
     }
 }
 
 async function gameLoop(arenaContract) {
     let gameStarted = await arenaContract.gameStarted();
     if (!gameStarted) {
-        console.log('Game has not started yet.');
-        return;
+        console.log('Waiting for game to start...');
+        await new Promise((resolve) => {
+            const interval = setInterval(async () => {
+                gameStarted = await arenaContract.gameStarted();
+                if (gameStarted) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 5000);
+        });
     }
+
+    console.log("Game has started!");
 
     const gridSize = Number(await arenaContract.gridSize());
     const maxTurns = 100;
@@ -56,3 +72,4 @@ main()
         console.error(error);
         process.exit(1);
     });
+
