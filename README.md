@@ -123,12 +123,36 @@ npx hardhat compile
 Deploy the contracts to the Arbitrum Sepolia testnet:
 
 ```bash
-npx hardhat run scripts/deploy.js --network arbitrumSepolia
+npx hardhat run scripts/deployMain.js --network arbitrumSepolia
 ```
 
 After deploying, you will see the deployed contract addresses in the console output.
 
-### 6. Interacting with the Contracts
+Add the contract address from above to your `.env` file, e.g.:
+
+```plaintext
+PRIVATE_KEY=your_private_key_here
+ARENA_CONTRACT_ADDRESS=0x2315D2e1c754ec4fA1a2933e4edEC4D51CeefE55
+```
+
+### 6. Start the web server, locally or deploy to a public host
+
+Edit the top of `arena-web-app/script.js` to fill in the contract address from above.
+
+Then start the web server
+
+```bash
+cd arena-web-app
+npx http-server .
+```
+
+### 7. Start the background game loop script
+
+```bash
+npx hardhat run scripts/gameLoop.js --network arbitrumSepolia
+```
+
+### 8. Interacting with the Contracts
 
 You can interact with the deployed contracts using the Hardhat console or by writing additional scripts. For example, to interact with the `Arena` contract using the Hardhat console:
 
