@@ -79,6 +79,13 @@ contract Arena {
         emit PlayerRegistered(playerContract, playerName);
     }
 
+    function clearPlayers() public onlyBeforeGameStart {
+        for (uint256 i = 0; i < playerAddresses.length; i++) {
+            delete players[playerAddresses[i]];
+        }
+        delete playerAddresses;
+    }
+
     function registerMultiplePlayers(address[] memory playerContracts) public {
         for (uint i = 0; i < playerContracts.length; i++) {
             registerPlayer(playerContracts[i]);

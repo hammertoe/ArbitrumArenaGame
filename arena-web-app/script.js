@@ -1,5 +1,5 @@
 // Update with the Arena contract address and WebSocket URL
-const arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
+const arenaAddress = '0x2315D2e1c754ec4fA1a2933e4edEC4D51CeefE55';
 const wsUrl = "wss://arbitrum-sepolia.infura.io/ws/v3/1c463129882e43dd9c641c38fb25f332";
 
 let provider;
@@ -97,6 +97,17 @@ document.getElementById('start-game').addEventListener('click', async () => {
         await tx.wait();
     } catch (error) {
         console.error('Error starting game:', error);
+        alert('Error starting game. See console for details.');
+    }
+});
+
+// Clear players
+document.getElementById('clear-players').addEventListener('click', async () => {
+    try {
+        const tx = await arenaContract.clearPlayers();
+        await tx.wait();
+    } catch (error) {
+        console.error('Error clearing players:', error);
         alert('Error starting game. See console for details.');
     }
 });
