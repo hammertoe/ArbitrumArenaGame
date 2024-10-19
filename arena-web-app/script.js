@@ -1,11 +1,13 @@
-// 1c463129882e43dd9c641c38fb25f332
+// Update with the Arena contract address and WebSocket URL
+const arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
+const wsUrl = "wss://arbitrum-sepolia.infura.io/ws/v3/1c463129882e43dd9c641c38fb25f332";
+
 let provider;
 let wsProvider;
 let signer;
 let arenaContract;
 let arenaAbi;
-let arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
-let gridSize = 10;
+let gridSize;
 let registeredPlayers = new Map(); // Store player info using address as key
 
 // Enhanced color palette for up to 30 players
@@ -59,7 +61,6 @@ document.getElementById('connect-wallet').addEventListener('click', async () => 
         const walletAddress = await signer.getAddress();
         document.getElementById('wallet-address').innerText = `Connected: ${walletAddress}`;
 
-        const wsUrl = "wss://arbitrum-sepolia.infura.io/ws/v3/1c463129882e43dd9c641c38fb25f332";
         wsProvider = new ethers.providers.WebSocketProvider(wsUrl);
 
         arenaContract = new ethers.Contract(arenaAddress, arenaAbi.abi, signer);
