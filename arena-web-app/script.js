@@ -30,15 +30,10 @@ fetch('arenaAbi.json')
     });
 
 function getDistributedColors(numPlayers) {
-    if (numPlayers <= 0) return [];
-    if (numPlayers >= playerColors.length) return playerColors;
-
-    const step = Math.floor(playerColors.length / numPlayers);
     const distributedColors = [];
 
     for (let i = 0; i < numPlayers; i++) {
-        const index = (i * step) % playerColors.length;
-        distributedColors.push(playerColors[index]);
+        distributedColors.push(playerColors[i % playerColors.length]);
     }
 
     return distributedColors;
