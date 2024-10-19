@@ -89,6 +89,17 @@ document.getElementById('register-player').addEventListener('click', async () =>
     }
 });
 
+// Start the game
+document.getElementById('start-game').addEventListener('click', async () => {
+    try {
+        const tx = await arenaContract.startGame();
+        await tx.wait();
+    } catch (error) {
+        console.error('Error starting game:', error);
+        alert('Error starting game. See console for details.');
+    }
+});
+
 async function getPlayerInfo() {
     let numPlayers = Number(await arenaContract.getNumPlayers());
     const { playerAddrs, xs, ys, healths } = await arenaContract.getGameState();
@@ -106,29 +117,33 @@ function addStatusMessage(attackerAddress, targetAddress, message) {
     const messageElement = document.createElement('div');
     messageElement.className = 'status-message';
 
-    // Create the color square for the attacker
-    const colorSquare1 = document.createElement('div');
-    colorSquare1.style.backgroundColor = getPlayerColor(attackerAddress);
-    colorSquare1.style.width = '12px';
-    colorSquare1.style.height = '12px';
-    colorSquare1.style.display = 'inline-block';
-    colorSquare1.style.marginRight = '8px';
-    colorSquare1.style.verticalAlign = 'middle';
+    if (attackerAddress) {
+        // Create the color square for the attacker
+        const colorSquare1 = document.createElement('div');
+        colorSquare1.style.backgroundColor = getPlayerColor(attackerAddress);
+        colorSquare1.style.width = '12px';
+        colorSquare1.style.height = '12px';
+        colorSquare1.style.display = 'inline-block';
+        colorSquare1.style.marginRight = '8px';
+        colorSquare1.style.verticalAlign = 'middle';
 
-    // Append the attacker color square 
-    messageElement.appendChild(colorSquare1);
+        // Append the attacker color square 
+        messageElement.appendChild(colorSquare1);
+    }
 
-    // Create the color square for the target
-    const colorSquare2 = document.createElement('div');
-    colorSquare2.style.backgroundColor = getPlayerColor(targetAddress);
-    colorSquare2.style.width = '12px';
-    colorSquare2.style.height = '12px';
-    colorSquare2.style.display = 'inline-block';
-    colorSquare2.style.marginRight = '8px';
-    colorSquare2.style.verticalAlign = 'top';
+    if (targetAddress) {
+        // Create the color square for the target
+        const colorSquare2 = document.createElement('div');
+        colorSquare2.style.backgroundColor = getPlayerColor(targetAddress);
+        colorSquare2.style.width = '12px';
+        colorSquare2.style.height = '12px';
+        colorSquare2.style.display = 'inline-block';
+        colorSquare2.style.marginRight = '8px';
+        colorSquare2.style.verticalAlign = 'top';
 
-    // Append the target color square 
-    messageElement.appendChild(colorSquare2);
+        // Append the target color square 
+        messageElement.appendChild(colorSquare2);
+    }
 
     // Create the text element for the message
     const textElement = document.createElement('span');
@@ -172,9 +187,25 @@ async function setupEventListeners() {
         await updateArena(playerAddrs, xs, ys, healths);
     });
 
+    arenaContractWs.on('GameStarted', async (winner, event) => {
+        console.log(`Game started`);
+        addStatusMessage(null, null, "Game Started! Let's Battle!");
+    });
+
     arenaContractWs.on('GameEnded', async (winner, event) => {
-        console.log(`Game ended! Winner: ${winner}`);
-        alert(`Game ended! Winner is ${winner}`);
+        const winnerInfo = registeredPlayers.get(winner);
+        console.log(`Game ended! Winner: ${winnerInfo.name || winner}`);
+        addStatusMessage(winner, null, "Game Ended! Winner is " + winnerInfo.name || winner);
+    });
+
+    arenaContractWs.on('RestHappened', async (playerAddr, event) => {
+        const playerInfo = registeredPlayers.get(playerAddr);
+        addStatusMessage(playerAddr, null, `${playerInfo.name || winner} rested`);
+    });
+
+    arenaContractWs.on('DiedHappened', async (playerAddr, event) => {
+        const playerInfo = registeredPlayers.get(playerAddr);
+        addStatusMessage(playerAddr, null, `${playerInfo.name || winner} died :(`);
     });
 
     console.log("Event listeners set up.");
@@ -187,7 +218,7 @@ async function updateArena(playerAddrs, xs, ys, healths) {
 
     const players = [];
     for (let i = 0; i < playerAddrs.length; i++) {
-        if (Number(healths[i] > 0)) {
+        if (Number(healths[i] >= 0)) {
             const playerAddr = playerAddrs[i];
             const playerInfo = registeredPlayers.get(playerAddr) || { name: `Player ${i + 1}` };
             players.push({
@@ -228,7 +259,7 @@ async function updateArena(playerAddrs, xs, ys, healths) {
             cellDiv.className = 'cell';
 
             const player = grid[y][x];
-            if (player) {
+            if (player && player.health > 0) {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
                 const color = getPlayerColor(player.playerAddress);
