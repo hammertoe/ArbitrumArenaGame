@@ -4,7 +4,7 @@ let wsProvider;
 let signer;
 let arenaContract;
 let arenaAbi;
-let arenaAddress = '0xCd82cE99045CaC23481677749F88AEd5ef35c1Fe';
+let arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
 let gridSize = 10;
 let registeredPlayers = new Map(); // Store player info using address as key
 
@@ -77,6 +77,23 @@ document.getElementById('connect-wallet').addEventListener('click', async () => 
     }
 });
 
+document.getElementById('register-player').addEventListener('click', async () => {
+    const playerAddress = document.getElementById('player-address').value;
+    if (ethers.utils.isAddress(playerAddress)) {
+        try {
+            const tx = await arenaContract.registerPlayer(playerAddress);
+            await tx.wait();
+            alert('Player registered successfully!');
+            await getPlayerInfo();
+        } catch (error) {
+            console.error('Error registering player:', error);
+            alert('Error registering player. See console for details.');
+        }
+    } else {
+        alert('Invalid address. Please enter a valid Ethereum address.');
+    }
+});
+
 async function getPlayerInfo() {
     let numPlayers = Number(await arenaContract.getNumPlayers());
     const { playerAddrs, xs, ys, healths } = await arenaContract.getGameState();
@@ -87,21 +104,86 @@ async function getPlayerInfo() {
     await updateArena(playerAddrs, xs, ys, healths);
 }
 
+
+// Function to handle adding messages to the status screen with a colored square
+function addStatusMessage(attackerAddress, targetAddress, message) {
+    const messagesContent = document.getElementById('messages-content');
+    const messageElement = document.createElement('div');
+    messageElement.className = 'status-message';
+
+    // Create the color square for the attacker
+    const colorSquare1 = document.createElement('div');
+    colorSquare1.style.backgroundColor = getPlayerColor(attackerAddress);
+    colorSquare1.style.width = '12px';
+    colorSquare1.style.height = '12px';
+    colorSquare1.style.display = 'inline-block';
+    colorSquare1.style.marginRight = '8px';
+    colorSquare1.style.verticalAlign = 'middle';
+
+    // Append the attacker color square 
+    messageElement.appendChild(colorSquare1);
+
+    // Create the color square for the target
+    const colorSquare2 = document.createElement('div');
+    colorSquare2.style.backgroundColor = getPlayerColor(targetAddress);
+    colorSquare2.style.width = '12px';
+    colorSquare2.style.height = '12px';
+    colorSquare2.style.display = 'inline-block';
+    colorSquare2.style.marginRight = '8px';
+    colorSquare2.style.verticalAlign = 'top';
+
+    // Append the target color square 
+    messageElement.appendChild(colorSquare2);
+
+    // Create the text element for the message
+    const textElement = document.createElement('span');
+    textElement.textContent = message;
+    messageElement.appendChild(textElement);
+
+    messagesContent.appendChild(messageElement);
+
+    // Scroll to the bottom to show the latest message
+    messagesContent.scrollTop = messagesContent.scrollHeight;
+}
+
+// Setup event listener for the `AttackHappened` event
 async function setupEventListeners() {
     const arenaContractWs = new ethers.Contract(arenaAddress, arenaAbi.abi, wsProvider);
+
+    arenaContractWs.on('AttackHappened', (attackerAddress, targetAddress, success, defended, event) => {
+        // Look up the player names from the registeredPlayers mapping
+        console.log(`Attack event: ${attackerAddress} -> ${targetAddress}`);
+        const attackerInfo = registeredPlayers.get(attackerAddress);
+        const targetInfo = registeredPlayers.get(targetAddress);
+
+        const attackerName = attackerInfo ? attackerInfo.name : `${attackerAddress.slice(0, 6)}...${attackerAddress.slice(-4)}`;
+        const targetName = targetInfo ? targetInfo.name : `${targetAddress.slice(0, 6)}...${targetAddress.slice(-4)}`;
+
+        // Construct the message based on the success and defended values
+        let message = `${attackerName} attacked ${targetName}`;
+
+        if (success) {
+            message += defended ? " but it was defended!" : "";
+        } else {
+            message += " but missed!";
+        }
+
+        // Add the message to the status screen with a color indicator for the attacker
+        addStatusMessage(attackerAddress, targetAddress, message);
+    });
 
     arenaContractWs.on('TurnPlayed', async (turnNumber, playerAddrs, xs, ys, healths, event) => {
         console.log(`Turn ${turnNumber}`);
         await updateArena(playerAddrs, xs, ys, healths);
     });
-    
+
     arenaContractWs.on('GameEnded', async (winner, event) => {
         console.log(`Game ended! Winner: ${winner}`);
         alert(`Game ended! Winner is ${winner}`);
     });
 
-    console.log("Set up event listeners");
-    console.log(wsProvider._events);
+    console.log("Event listeners set up.");
+    console.log(wsProvider._events);    
 }
 
 async function updateArena(playerAddrs, xs, ys, healths) {

@@ -1,10 +1,8 @@
 body {
     font-family: Arial, sans-serif;
     text-align: center;
-}
-
-h1 {
-    display: none;
+    margin: 0;
+    padding: 0;
 }
 
 #banner {
@@ -25,8 +23,8 @@ h1 {
 }
 
 .cell {
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
     border: 1px solid #ccc;
     display: inline-block;
     vertical-align: top;
@@ -66,4 +64,55 @@ h1 {
 td {
     text-align: left;
     padding-right: 20px;
+}
+
+.main-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding: 0 20px;
+    gap: 20px;
+}
+
+#registered-players-container {
+    flex: 1;
+    max-width: 400px;
+    overflow-y: auto;
+}
+
+#arena-container {
+    flex: 2;
+    text-align: center;
+}
+
+#status-messages {
+    flex: 1;
+    max-width: 400px;
+    overflow-y: auto;
+    height: 600px; /* Adjust as needed */
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+#messages-content {
+    text-align: left;
+    font-size: 14px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+#status-messages {
+    flex: 1;
+    max-width: 300px;
+    overflow-y: auto;
+    height: 400px; /* Adjust as needed */
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.status-message {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
 }

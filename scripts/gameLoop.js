@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-    const arenaAddress = '0xCd82cE99045CaC23481677749F88AEd5ef35c1Fe';
+    const arenaAddress = '0xA06714D2FE0Ba15Ecfa1dB7D794B36A696729408';
 
     const provider = ethers.provider;
     const [signer] = await ethers.getSigners();

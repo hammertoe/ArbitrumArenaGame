@@ -6,7 +6,7 @@ import "./GameTypes.sol";
 
 contract Arena {
     // State variables
-    uint256 public gridSize = 10;
+    uint256 public gridSize = 15;
     bool public gameStarted = false;
     uint256 public totalTurns = 0;
     uint256 public maxTurns = 100;
@@ -39,6 +39,9 @@ contract Arena {
     event GameEnded(address winner);
     event ActionFailed(address playerAddress);
     event ActionSuccess(address playerAddress);
+    event AttackHappened(address attackerAddress, address targetAddress, bool success, bool defended);
+    event RestHappened(address playerAddress);
+    event DiedHappened(address playerAddress);
 
 
     // Modifiers
@@ -146,29 +149,6 @@ contract Arena {
             occupiedPositions[index] = true;
 
             // Calculate x and y from the index
-            player.x = index % gridSize;
-            player.y = index / gridSize;
-            player.health = 100;
-            player.defenseBuff = 0;
-
-            // Call reset on the player contract
-            IPlayer(playerAddr).reset();
-        }
-    }
-
-    // Reset the game state without clearing registered players
-    function XresetGame() internal {
-        // Reset game state variables
-        gameStarted = false;
-        totalTurns = 0;
-
-        // Reset each player's state and call reset on player contracts
-        for (uint256 i = 0; i < playerAddresses.length; i++) {
-            address playerAddr = playerAddresses[i];
-            PlayerInfo storage player = players[playerAddr];
-
-            // Re-initialize the player at a random position
-            uint256 index = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, playerAddr, totalTurns))) % (gridSize * gridSize);
             player.x = index % gridSize;
             player.y = index / gridSize;
             player.health = 100;
@@ -331,14 +311,20 @@ contract Arena {
                         // Apply target's defense buff
                         if (targetPlayer.defenseBuff > 0) {
                             damage = (damage * (100 - targetPlayer.defenseBuff)) / 100;
+                            emit AttackHappened(attackerAddr, targetPlayerAddr, true, true);
+                        } else {
+                            emit AttackHappened(attackerAddr, targetPlayerAddr, true, false);
                         }
 
                         // Apply damage
                         if (targetPlayer.health <= damage) {
                             targetPlayer.health = 0;
+                            emit DiedHappened(targetPlayerAddr);
                         } else {
                             targetPlayer.health -= damage;
                         }
+                    } else {
+                        emit AttackHappened(attackerAddr, targetPlayerAddr, false, false);
                     }
                     // Mark that the target player was attacked
                     playerAttacked[targetIndex] = true;
@@ -361,6 +347,7 @@ contract Arena {
             // If the player did not move and was not attacked
             if (!playerMoved[i] && !playerAttacked[i]) {
                 player.health += 5;
+                emit RestHappened(playerAddr);
                 if (player.health > 100) {
                     player.health = 100; // Cap health at 100
                 }

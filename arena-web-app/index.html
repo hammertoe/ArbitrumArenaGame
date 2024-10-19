@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arena Game</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Include ethers.js library -->
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
 </head>
 <body>
@@ -26,29 +25,37 @@
         <button id="register-player">Register Player</button>
     </div>
 
-    <div id="registered-players-container">
-        <h2>Registered Players</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Color</th>
-                    <th>Health</th>
-                    <th>Address</th>
-                    <th>Name</th>
-                </tr>
-            </thead>
-            <tbody id="registered-players-list">
-                <!-- Player rows will be dynamically added here -->
-            </tbody>
-        </table>
+    <div class="main-container">
+        <div id="registered-players-container">
+            <h2>Registered Players</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Health</th>
+                        <th>Address</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody id="registered-players-list">
+                    <!-- Player rows will be dynamically added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="arena-container">
+            <h2>Arena</h2>
+            <div id="arena-grid"></div>
+        </div>
+
+        <div id="status-messages">
+            <h2>Game Status</h2>
+            <div id="messages-content">
+                <!-- Game status messages will appear here -->
+            </div>
+        </div>
     </div>
 
-     <div id="arena-container">
-        <h2>Arena</h2>
-        <div id="arena-grid"></div>
-    </div>
-
-    <!-- Include your script.js file after ethers.js -->
     <script src="script.js"></script>
 </body>
 </html>
