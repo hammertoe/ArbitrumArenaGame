@@ -1,10 +1,11 @@
-![Arbitrum Arena Banner](arena-web-app/arbitrum-arena-banner.jpg)
+![Arbitrum Arena Banner](arbitrum-arena-demo2.gif)
 
 # Arbitrum Arena
 
 Arbitrum Arena is a decentralized, blockchain-based multiplayer game deployed on the Arbitrum Sepolia test network. Players compete against each other on a digital grid-based battlefield, where they can attack, defend, and strategize to outlast their opponents. The game leverages smart contracts written in Solidity to ensure fairness, transparency, and immutability of game mechanics.
 
 ## Table of Contents
+- [TL;DR](#tl-dr)
 - [Overview](#overview)
 - [How to Play](#how-to-play)
 - [Game Rules](#game-rules)
@@ -12,6 +13,9 @@ Arbitrum Arena is a decentralized, blockchain-based multiplayer game deployed on
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
+
+## TL;DR
+You write a smart contract that controls your player in the arena. Each turn your contract is called with the game state. Register that contract with the main arena contract and when the game is run, see how your player performs!
 
 ## Overview
 Arbitrum Arena is a turn-based strategy game where multiple players battle on a grid. Each player controls a unique character with the goal of eliminating other players through strategic moves and attacks. The game is hosted on the Arbitrum Sepolia network, offering fast and low-cost transactions. Players register their participation through their Ethereum wallets and interact with the game using smart contracts.
